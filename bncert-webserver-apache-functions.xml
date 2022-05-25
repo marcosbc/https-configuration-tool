@@ -1,0 +1,697 @@
+<component>
+    <name>bncertwebserverapachefunctions</name>
+    <show>0</show>
+    <functionDefinitionList>
+        <actionDefinition name="apacheRegisterApp">
+            <parameterList>
+                <stringParameter name="applicationId" default=""/>
+                <stringParameter name="configFile" default="" />
+                <stringParameter name="intoConfigFile" default="" />
+                <stringParameter name="enabled" default="1"/>
+                <booleanParameter name="useVirtualHosts" default="0"/>
+            </parameterList>
+            <actionList>
+                <setInstallerVariable name="type" value="prefix"/>
+                <setInstallerVariable name="type" value="vhosts">
+                    <ruleList>
+                        <isTrue value="${useVirtualHosts}"/>
+                    </ruleList>
+                </setInstallerVariable>
+                <setInstallerVariable name="configFile" value="${app(${applicationId}).installdir.unix}/conf/httpd-${type}.conf" >
+                    <ruleList>
+                        <stringTest text="${configFile}" type="empty" />
+                        <fileExists path="${app(${applicationId}).installdir.unix}" />
+                    </ruleList>
+                </setInstallerVariable>
+                <setInstallerVariable name="configFile" value="${${applicationId}_installation_directory}/conf/httpd-${type}.conf" >
+                    <ruleList>
+                        <stringTest text="${configFile}" type="empty" />
+                        <fileExists path="${${applicationId}_installation_directory}" />
+                    </ruleList>
+                </setInstallerVariable>
+                <actionGroup>
+                    <actionList>
+                        <setInstallerVariable name="intoConfigFile" value="httpd.conf" />
+                        <setInstallerVariable name="intoConfigFile" value="bitnami/bitnami-apps-${type}.conf" >
+                            <ruleList>
+                                <fileTest path="${web_server_configuration_directory.unix}/bitnami/bitnami.conf" condition="exists" />
+                                <fileTest path="${web_server_configuration_directory.unix}/bitnami/bitnami-apps-${type}.conf" condition="exists" />
+                            </ruleList>
+                        </setInstallerVariable>
+                    </actionList>
+                    <ruleList>
+                        <compareText text="${intoConfigFile}" logic="equals" value=""/>
+                    </ruleList>
+                </actionGroup>
+                <addTextToFile>
+                    <file>${web_server_configuration_directory}/${intoConfigFile}</file>
+                    <text>Include "${configfile}"
+                    </text>
+                    <ruleList>
+                        <fileContentTest path="${web_server_configuration_directory.unix}/${intoConfigFile}" logic="does_not_contain" text="${configFile}"/>
+                        <isTrue value="${enabled}" />
+                    </ruleList>
+                </addTextToFile>
+                <addTextToFile>
+                    <file>${web_server_configuration_directory}/${intoConfigFile}</file>
+                    <text>#Include "${configFile}"
+                    </text>
+                    <ruleList>
+                        <fileContentTest path="${web_server_configuration_directory.unix}/${intoConfigFile}" logic="does_not_contain" text="${configFile}"/>
+                        <isFalse value="${enabled}" />
+                    </ruleList>
+                </addTextToFile>
+            </actionList>
+        </actionDefinition>
+
+        <actionDefinition name="apacheConfigurationForApp">
+            <parameterList>
+                <stringParameter name="appName" value="" default="${project.shortname}"/>
+                <stringParameter name="applicationOnRoot" value="" default="0"/>
+                <stringParameter name="appApacheConfigurationFile" value="" default="httpd-app.conf"/>
+                <stringParameter name="forceAppApacheConfigurationFileCreation" value="1"/>
+                <stringParameter name="appDirectory" value="" default="${installdir}/apps/${project.shortname}"/>
+                <stringParameter name="apacheConfigurationText" value="" default=""/>
+                <stringParameter name="innerApacheConfigurationText" value="" default=""/>
+                <stringParameter name="apachePrefixConfigurationText" value="" default=""/>
+                <stringParameter name="apacheVhostsConfigurationText" value="" default=""/>
+                <stringParameter name="apacheAllowOverride" value="" default=""/>
+                <stringParameter name="apacheOptions" value="" default="+MultiViews"/>
+                <stringParameter name="apacheIncludeHtaccess" value="" default="${appDirectory}/conf/${appApacheConfigurationFile}"/>
+                <stringParameter name="appWebDirectory" value="" default=""/>
+                <stringParameter name="appConfDirectory" value="" default=""/>
+                <stringParameter name="beforeAppApacheConfiguration" value="" default=""/>
+                <stringParameter name="insideAppApacheConfiguration" value="" default=""/>
+                <stringParameter name="afterAppApacheConfiguration" value="" default=""/>
+                <stringParameter name="extraApacheSettings" value="" default=""/>
+                <stringParameter name="disableBitNamiBanner" value="0" default=""/>
+                <stringParameter name="disableBannerCondition" value="%{REQUEST_URI} !~ m!^/+(index\.php)?/*$!i"/>
+                <stringParameter name="addTextToBannerText" value=""/>
+                <stringParameter name="appConfigurationForVhost" default="" value=""/>
+                <booleanParameter name="withoutDirectoryConfiguration" default="0" value=""/>
+            </parameterList>
+            <actionList>
+                <setInstallerVariable name="appDirectory" value="${${appName}_installation_directory}">
+                    <ruleList>
+                        <fileExists path="${${appName}_installation_directory}" />
+                    </ruleList>
+                </setInstallerVariable>
+                <setInstallerVariable name="appDirectory" value="${app(${appName}).installdir}">
+                    <ruleList>
+                        <fileExists path="${app(${appName}).installdir}" />
+                    </ruleList>
+                </setInstallerVariable>
+                <setInstallerVariable name="appWebDirectory" value="${appDirectory}/htdocs">
+                    <ruleList>
+                        <compareText text="${appWebDirectory}" logic="equals" value=""/>
+                    </ruleList>
+                </setInstallerVariable>
+                <setInstallerVariable name="appConfDirectory" value="${appDirectory}">
+                    <ruleList>
+                        <compareText text="${appConfDirectory}" logic="equals" value=""/>
+                    </ruleList>
+                </setInstallerVariable>
+                <setInstallerVariable name="banner_dir" value=""/>
+                <createDirectory path="${appConfDirectory}/conf" />
+                <setInstallerVariable name="app_banner_text" value=""/>
+                <actionGroup>
+                    <actionList>
+                        <setInstallerVariable name="app_banner_text" value="${app_banner_text}
+                            ${addTextToBannerText}">
+                            <ruleList>
+                                <compareText logic="does_not_equal" text="${addTextToBannerText}" value=""/>
+                            </ruleList>
+                        </setInstallerVariable>
+                    </actionList>
+                    <ruleList>
+                        <isFalse value="${disableBitNamiBanner}"/>
+                        <compareText logic="does_not_equal" text="${banner_dir}" value=""/>
+                    </ruleList>
+                </actionGroup>
+                <writeFile>
+                    <path>${appConfDirectory}/conf/httpd-prefix.conf</path>
+                    <text>${apachePrefixConfigurationText}</text>
+                    <ruleList>
+                        <compareText logic="does_not_equal" text="${apachePrefixConfigurationText}" value=""/>
+                    </ruleList>
+                </writeFile>
+                <writeFile>
+                    <path>${appConfDirectory}/conf/httpd-prefix.conf</path>
+                    <text>Alias /${appName}/ &quot;${appWebDirectory}/&quot;
+Alias /${appName} &quot;${appWebDirectory}&quot;
+</text>
+                    <ruleList>
+                        <compareText logic="equals" text="${apachePrefixConfigurationText}" value=""/>
+                        <isFalse value="${applicationOnRoot}"/>
+                    </ruleList>
+                </writeFile>
+                <writeFile>
+                    <path>${appConfDirectory}/conf/httpd-prefix.conf</path>
+                    <text>DocumentRoot &quot;${appWebDirectory}&quot;
+                    </text>
+                    <ruleList>
+                        <compareText logic="equals" text="${apachePrefixConfigurationText}" value=""/>
+                        <isTrue value="${applicationOnRoot}"/>
+                    </ruleList>
+                </writeFile>
+                <addTextToFile>
+                    <file>${appConfDirectory}/conf/httpd-prefix.conf</file>
+                    <text><![CDATA[
+RewriteEngine On
+RewriteCond "%{HTTP_HOST}" ^ec2-([0-9]{1,3})-([0-9]{1,3})-([0-9]{1,3})-([0-9]{1,3})\..*\.amazonaws.com(:[0-9]*)?$
+RewriteRule "^/?(.*)" "%{REQUEST_SCHEME}://%1.%2.%3.%4%5/$1" [L,R=302,NE]
+]]></text>
+                    <ruleList>
+                        <isTrue value="${apache_aws_redirection}"/>
+                    </ruleList>
+                </addTextToFile>
+                <addTextToFile>
+                    <file>${appConfDirectory}/conf/httpd-prefix.conf</file>
+                    <text><![CDATA[
+RewriteEngine On
+RewriteCond "%{HTTP_HOST}" ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})(:[0-9]*)?$
+RewriteRule "^/?(.*)" "%{REQUEST_SCHEME}://%1.%2.%3.%4.xip.io%5/$1" [L,R=302,NE]
+]]></text>
+                    <ruleList>
+                        <isTrue value="${apache_xip_redirection}"/>
+                    </ruleList>
+                </addTextToFile>
+                <addTextToFile>
+                    <file>${appConfDirectory}/conf/httpd-prefix.conf</file>
+                    <text><![CDATA[
+Include "${appConfDirectory}/conf/${appApacheConfigurationFile}"]]></text>
+                </addTextToFile>
+                <if>
+                    <conditionRuleList>
+                        <compareText logic="equals" text="${apacheVhostsConfigurationText}" value=""/>
+                    </conditionRuleList>
+                    <actionList>
+                        <writeFile>
+                            <path>${appConfDirectory}/conf/httpd-vhosts.conf</path>
+                            <text>&lt;VirtualHost *:${web_server_port}&gt;
+    ServerName ${appName}.example.com
+    ServerAlias www.${appName}.example.com
+    DocumentRoot &quot;${appWebDirectory}&quot;
+    ${appConfigurationForVhost}
+    Include &quot;${appConfDirectory}/conf/${appApacheConfigurationFile}&quot;
+&lt;/VirtualHost&gt;
+
+&lt;VirtualHost *:${web_server_ssl_port}&gt;
+    ServerName ${appName}.example.com
+    ServerAlias www.${appName}.example.com
+    DocumentRoot &quot;${appWebDirectory}&quot;
+    SSLEngine on
+    SSLCertificateFile &quot;${appConfDirectory}/conf/certs/server.crt&quot;
+    SSLCertificateKeyFile &quot;${appConfDirectory}/conf/certs/server.key&quot;
+    ${appConfigurationForVhost}
+    Include &quot;${appConfDirectory}/conf/${appApacheConfigurationFile}&quot;
+&lt;/VirtualHost&gt;
+</text>
+                        </writeFile>
+                    </actionList>
+                    <elseActionList>
+                        <writeFile>
+                            <path>${appConfDirectory}/conf/httpd-vhosts.conf</path>
+                            <text>${apacheVhostsConfigurationText}</text>
+                        </writeFile>
+                    </elseActionList>
+                </if>
+                <actionGroup>
+                    <actionList>
+                        <!-- T118 Java apps do not have DocumentRoot -->
+                        <substitute>
+                            <files>${appConfDirectory}/conf/httpd-vhosts.conf</files>
+                            <type>exact</type>
+                            <substitutionList>
+                                <substitution>
+                                    <pattern>DocumentRoot &quot;${appWebDirectory}&quot;</pattern>
+                                    <value/>
+                                </substitution>
+                            </substitutionList>
+                        </substitute>
+                    </actionList>
+                    <ruleList>
+                        <fileExists path="${appConfDirectory}/conf/httpd-vhosts.conf"/>
+                        <fileTest condition="not_exists" path="${appWebDirectory}"/>
+                    </ruleList>
+                </actionGroup>
+                <actionGroup>
+                    <actionList>
+                        <setInstallerVariable name="apacheAllowOverride" value="All"/>
+                        <setInstallerVariable name="apacheAllowOverride" value="None">
+                            <ruleList>
+                                <fileExists path="${appConfDirectory}/conf/htaccess.conf"/>
+                            </ruleList>
+                        </setInstallerVariable>
+                    </actionList>
+                    <ruleList>
+                        <compareText logic="equals" text="${apacheAllowOverride}" value=""/>
+                    </ruleList>
+                </actionGroup>
+
+                <setInstallerVariable name="app_conf_text" value="${apacheConfigurationText}"/>
+
+                <setInstallerVariable name="app_conf_text">
+                    <value>${beforeAppApacheConfiguration}
+&lt;Directory &quot;${appWebDirectory}&quot;&gt;
+    ${extraApacheSettings}
+    ${innerApacheConfigurationText}
+    ${app_banner_text}
+&lt;/Directory&gt;
+${afterAppApacheConfiguration}
+</value>
+                    <ruleList>
+                        <compareText logic="equals" text="${app_conf_text}" value=""/>
+                        <compareText logic="does_not_equal" text="${innerApacheConfigurationText}" value=""/>
+                    </ruleList>
+                </setInstallerVariable>
+                <setInstallerVariable name="insideDirConf" value=""/>
+                <setInstallerVariable name="insideDirConf">
+                    <value>${insideDirConf}
+    ${insideAppApacheConfiguration}</value>
+                    <ruleList>
+                        <compareText logic="does_not_equal" text="${insideAppApacheConfiguration}" value=""/>
+                    </ruleList>
+                </setInstallerVariable>
+                <setInstallerVariable name="insideDirConf">
+                    <value>${insideDirConf}
+    ${extraApacheSettings}</value>
+                    <ruleList>
+                        <compareText logic="does_not_equal" text="${extraApacheSettings}" value=""/>
+                    </ruleList>
+                </setInstallerVariable>
+                <setInstallerVariable name="insideDirConf">
+                    <value>${insideDirConf}
+    ${app_banner_text}</value>
+                    <ruleList>
+                        <compareText logic="does_not_equal" text="${app_banner_text}" value=""/>
+                    </ruleList>
+                </setInstallerVariable>
+                 <setInstallerVariable name="app_conf_text">
+                    <value>${beforeAppApacheConfiguration}
+${afterAppApacheConfiguration}
+${app_banner_text}
+</value>
+                    <ruleList>
+                        <compareText logic="equals" text="${app_conf_text}" value=""/>
+                        <isTrue value="${withoutDirectoryConfiguration}"/>
+                    </ruleList>
+               </setInstallerVariable>
+               <setInstallerVariable name="app_conf_text">
+                    <value>${beforeAppApacheConfiguration}
+&lt;Directory &quot;${appWebDirectory}&quot;&gt;
+    Options ${apacheOptions}
+    AllowOverride ${apacheAllowOverride}
+    &lt;IfVersion &lt; 2.3 &gt;
+        Order allow,deny
+        Allow from all
+    &lt;/IfVersion&gt;
+    &lt;IfVersion &gt;= 2.3&gt;
+        Require all granted
+    &lt;/IfVersion&gt;
+    ${insideDirConf}
+&lt;/Directory&gt;
+${afterAppApacheConfiguration}
+</value>
+                    <ruleList>
+                        <compareText logic="equals" text="${app_conf_text}" value=""/>
+                    </ruleList>
+                </setInstallerVariable>
+
+                <writeFile>
+                    <path>${appConfDirectory}/conf/${appApacheConfigurationFile}</path>
+                    <text>${app_conf_text}</text>
+                    <ruleEvaluationLogic>or</ruleEvaluationLogic>
+                    <ruleList>
+                        <fileTest condition="not_exists" path="${appConfDirectory}/conf/${appApacheConfigurationFile}"/>
+                        <isTrue value="${forceAppApacheConfigurationFileCreation}"/>
+                    </ruleList>
+                </writeFile>
+                <addTextToFile>
+                    <file>${appConfDirectory}/conf/${appApacheConfigurationFile}</file>
+                    <text>Include &quot;${appConfDirectory}/conf/htaccess.conf&quot;
+                    </text>
+                    <ruleList>
+                        <fileExists path="${appConfDirectory}/conf/htaccess.conf"/>
+                    </ruleList>
+                </addTextToFile>
+                <addDirectoriesToUninstaller addContents="1" files="${appConfDirectory}/conf"/>
+            </actionList>
+        </actionDefinition>
+
+        <!-- Actions only used within this file -->
+        <ruleDefinition name="apacheConfContains">
+            <parameterList>
+                <fileParameter name="file"/>
+                <stringParameter name="block"/>
+            </parameterList>
+            <ruleList>
+                <fileContentTest path="${file}" logic="contains" text="# BEGIN: ${block}"/>
+                <fileContentTest path="${file}" logic="contains" text="# END: ${block}"/>
+            </ruleList>
+        </ruleDefinition>
+        <actionDefinition name="apacheRemoveConf">
+            <parameterList>
+                <fileParameter name="file"/>
+                <stringParameter name="block"/>
+            </parameterList>
+            <actionList>
+                <generateRandomValue length="10" variable="tmpFileId"/>
+                <setInstallerVariable name="tmpFile" value="${file}.${tmpFileId}.tmp"/>
+                <tclEval>
+                    <code><![CDATA[
+set file [installbuilder::substText {${file}}]
+set tmpFile [installbuilder::substText {${tmpFile}}]
+set block [installbuilder::substText {${block}}]
+# Open configuration file for read, and temporary file for write
+set orig [open $file r]
+catch {fconfigure $orig -encoding binary}
+fconfigure $orig -buffering line
+set dest [open $tmpFile w+]
+catch {fconfigure $dest -encoding binary}
+# Modifiers to know where we are in the configuration file
+set inBlock 0
+# Read line by line, just like awk does
+while {[gets $orig data] >= 0} {
+    if {$data == "  # BEGIN: $block"} {
+        set inBlock 1
+    }
+    if {$data == "  # END: $block"} {
+        set inBlock 0
+    } elseif {!$inBlock} {
+        puts $dest $data
+    }
+}
+close $orig
+close $dest
+file rename -force $tmpFile $file
+]]></code>
+                </tclEval>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="apacheAddConfToVhost">
+            <parameterList>
+                <fileParameter name="file"/>
+                <stringParameter name="requiredConf"/>
+                <stringParameter name="httpConf"/>
+                <stringParameter name="httpsConf"/>
+                <stringParameter name="block"/>
+            </parameterList>
+            <actionList>
+                <generateRandomValue length="10" variable="tmpFileId"/>
+                <setInstallerVariable name="tmpFile" value="${file}.${tmpFileId}.tmp"/>
+                <tclEval>
+                    <code><![CDATA[
+set file [installbuilder::substText {${file}}]
+set tmpFile [installbuilder::substText {${tmpFile}}]
+set required_conf [installbuilder::substText {${requiredConf}}]
+set http_conf [installbuilder::substText {${httpConf}}]
+set https_conf [installbuilder::substText {${httpsConf}}]
+set block [installbuilder::substText {${block}}]
+# Open configuration file for read, and temporary file for write
+set orig [open $file r]
+catch {fconfigure $orig -encoding binary}
+fconfigure $orig -buffering line
+set dest [open $tmpFile w+]
+catch {fconfigure $dest -encoding binary}
+# Modifiers to know where we are in the configuration file
+set isInsideVhost 0
+set isStatusVhost 0
+set confAddedToVhost 0
+set vhostHasRequiredConf 0
+# Read line by line, just like awk does
+while {[gets $orig data] >= 0} {
+    if {[regexp {^<VirtualHost\s+_default_:[^>]+>$} $data]} {
+        # If we find an open tag for VirtualHost, we're getting inside one
+        set isInsideVhost 1
+    } elseif {[regexp {^\s*<\/VirtualHost>} $data]} {
+        # If we find a closing tag for VirtualHost, we're getting outside of one
+        set isInsideVhost 0
+        set confAddedToVhost 0
+        set vhostHasRequiredConf 0
+    } elseif {[regexp {^\s*ExtendedStatus\s+[oO][nN]} $data]} {
+        # If we find ExtendedStatus, assume all virtual hosts will be status pages
+        set isStatusVhost 1
+    }
+    if {$isInsideVhost && !$isStatusVhost && !$confAddedToVhost} {
+        if {[regexp "^\\s*$required_conf" $data]} {
+            set vhostHasRequiredConf 1
+        } elseif {[regexp {^\s*SSLEngine\s+[oO][nN]} $data]} {
+            # We're inside an HTTPS vhost, so print HTTPS config
+            set confAddedToVhost 1
+            if {$https_conf != ""} {
+                if {!$vhostHasRequiredConf} {
+                    puts $dest "  $required_conf"
+                }
+                puts $dest "  # BEGIN: $block\n$https_conf\n  # END: $block"
+            }
+        } elseif {[regexp {^\s*<Directory\s+} $data]} {
+            # Asume we're inside an HTTP vhost if we reached a Directory tag, if so print HTTP config
+            # We're inside an HTTPS vhost, so print HTTPS config
+            set confAddedToVhost 1
+            if {$http_conf != ""} {
+                if {!$vhostHasRequiredConf} {
+                    puts $dest "  $required_conf"
+                }
+                puts $dest "  # BEGIN: $block\n$http_conf\n  # END: $block"
+            }
+        }
+    }
+    puts $dest $data
+}
+close $orig
+close $dest
+file rename -force $tmpFile $file
+]]></code>
+                </tclEval>
+            </actionList>
+        </actionDefinition>
+        <!-- Rules -->
+        <ruleDefinition name="apacheIsHttpsRedirectionEnabled">
+            <actionList>
+                <readFile path="${web_server_conf_dir}/bitnami/bitnami.conf" name="confFile" abortOnError="0"/>
+            </actionList>
+            <ruleList>
+                <regExMatch text="${confFile}" logic="matches" pattern="\n\s*RewriteRule\s+\^\/\(\.\*\)\s+https:.*"/>
+            </ruleList>
+        </ruleDefinition>
+        <ruleDefinition name="apacheIsCustomHttpsRedirectionEnabled">
+            <ruleList>
+                <apacheIsHttpsRedirectionEnabled/>
+                <apacheConfContains file="${web_server_conf_dir}/bitnami/bitnami.conf" block="${parameter(additional_configuration).parameter(enable_https_redirection).description}" negate="1"/>
+            </ruleList>
+        </ruleDefinition>
+        <ruleDefinition name="apacheIsNonWwwToWwwRedirectionEnabled">
+            <actionList>
+                <readFile path="${web_server_conf_dir}/bitnami/bitnami.conf" name="confFile" abortOnError="0"/>
+            </actionList>
+            <ruleList>
+                <regExMatch text="${confFile}" logic="matches" pattern="\n\s*RewriteCond\s+\%\{HTTP_HOST\}\s+\!\^www\\\..*"/>
+            </ruleList>
+        </ruleDefinition>
+        <ruleDefinition name="apacheIsCustomNonWwwToWwwRedirectionEnabled">
+            <ruleList>
+                <apacheIsNonWwwToWwwRedirectionEnabled/>
+                <apacheConfContains file="${web_server_conf_dir}/bitnami/bitnami.conf" block="${parameter(additional_configuration).parameter(enable_nonwww_to_www_redirection).description}" negate="1"/>
+            </ruleList>
+        </ruleDefinition>
+        <ruleDefinition name="apacheIsWwwToNonWwwRedirectionEnabled">
+            <actionList>
+                <readFile path="${web_server_conf_dir}/bitnami/bitnami.conf" name="confFile" abortOnError="0"/>
+            </actionList>
+            <ruleList>
+                <regExMatch text="${confFile}" logic="matches" pattern="\n\s*RewriteCond\s+\%\{HTTP_HOST\}\s+\^www\\\..*"/>
+            </ruleList>
+        </ruleDefinition>
+        <ruleDefinition name="apacheIsCustomWwwToNonWwwRedirectionEnabled">
+            <ruleList>
+                <apacheIsWwwToNonWwwRedirectionEnabled/>
+                <apacheConfContains file="${web_server_conf_dir}/bitnami/bitnami.conf" block="${parameter(additional_configuration).parameter(enable_www_to_nonwww_redirection).description}" negate="1"/>
+            </ruleList>
+        </ruleDefinition>
+        <ruleDefinition name="apacheIsWebServerConfigurationValid">
+            <actionList>
+                <runProgram program="${web_server_dir}/bin/apachectl" programArguments="configtest" abortOnError="0" showMessageOnError="0"/>
+                <setInstallerVariable name="webserver_conf_error" value="${program_stderr}"/>
+            </actionList>
+            <ruleList>
+                <compareText text="${program_exit_code}" logic="equals" value="0"/>
+            </ruleList>
+        </ruleDefinition>
+        <!-- Populate metadata -->
+        <actionDefinition name="apachePopulateWebServerParameters">
+            <actionList>
+                <setInstallerVariable name="web_server_name" value="apache"/>
+                <setInstallerVariable name="web_server_fullname" value="Apache"/>
+                <setInstallerVariable name="web_server_dirname" value="apache2"/>
+                <setInstallerVariable name="web_server_dirname" value="apache">
+                    <ruleList>
+                        <compareText text="${installation_type}" logic="equals" value="nami"/>
+                    </ruleList>
+                </setInstallerVariable>
+                <setInstallerVariable name="web_server_reload_command" value="${web_server_dir}/bin/httpd -f ${web_server_conf_dir}/httpd.conf -k graceful"/>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="apacheConfigurationFiles">
+            <parameterList>
+                <stringParameter name="variable"/>
+            </parameterList>
+            <actionList>
+                <globalVariables names="${variable}"/>
+                <setInstallerVariable name="${variable}">
+                    <value>
+                        ${web_server_conf_dir}/httpd.conf
+                        ${web_server_conf_dir}/bitnami/bitnami.conf
+                    </value>
+                </setInstallerVariable>
+            </actionList>
+        </actionDefinition>
+        <!-- Actions -->
+        <actionDefinition name="apacheConfigureCertificates">
+            <parameterList>
+                <stringParameter name="keyFile"/>
+                <stringParameter name="crtFile"/>
+            </parameterList>
+            <actionList>
+                <foreach variables="type" values="key crt">
+                    <actionList>
+                        <setInstallerVariableFromRegEx name="basename" pattern=".*\/([^/]+)" substitution="\1" text="${${type}File}"/>
+                        <setInstallerVariable name="dest_${type}_file" value="${web_server_conf_dir}/${basename}"/>
+                        <!-- We already backed it up, so we can safely replace it -->
+                        <deleteFile path="${dest_${type}_file}"/>
+                        <createSymLink target="${${type}File}" linkName="${dest_${type}_file}"/>
+                    </actionList>
+                </foreach>
+                <substitute type="regexp" files="${web_server_conf_dir}/bitnami/bitnami.conf">
+                    <substitutionList>
+                        <substitution pattern="SSLCertificateKeyFile\s+.*" value="SSLCertificateKeyFile &quot;${dest_key_file}&quot;"/>
+                        <substitution pattern="SSLCertificateFile\s+.*" value="SSLCertificateFile &quot;${dest_crt_file}&quot;"/>
+                    </substitutionList>
+                </substitute>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="apacheConfigureServerName">
+            <parameterList>
+                <stringParameter name="serverName"/>
+            </parameterList>
+            <actionList>
+                <substitute type="regexp" files="${web_server_conf_dir}/httpd.conf" enableBackreferences="1">
+                    <substitutionList>
+                        <substitution pattern="^\s*ServerName\s+.*(:[0-9])\s*" value="ServerName ${serverName}\1"/>
+                    </substitutionList>
+                </substitute>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="apacheEnableHttpsRedirection">
+            <actionList>
+                <setInstallerVariable name="block" value="${parameter(additional_configuration).parameter(enable_https_redirection).description}"/>
+                <if>
+                    <conditionRuleList>
+                        <apacheIsHttpsRedirectionEnabled negate="1"/>
+                    </conditionRuleList>
+                    <actionList>
+                        <logMessage text="Enabling HTTPS redirection"/>
+                        <apacheAddConfToVhost file="${web_server_conf_dir}/bitnami/bitnami.conf" block="${block}">
+                            <requiredConf>RewriteEngine On</requiredConf>
+                            <httpConf>  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP_HOST} !^(localhost|127.0.0.1)
+  RewriteCond %{REQUEST_URI} !^/\.well-known
+  RewriteRule ^/(.*) https://%{SERVER_NAME}/$1 [R,L]</httpConf>
+                        </apacheAddConfToVhost>
+                    </actionList>
+                    <elseActionList>
+                        <logMessage text="Not enabling HTTPS redirection, it was already enabled"/>
+                    </elseActionList>
+                </if>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="apacheDisableHttpsRedirection">
+            <actionList>
+                <apacheRemoveConf file="${web_server_conf_dir}/bitnami/bitnami.conf" block="${parameter(additional_configuration).parameter(enable_https_redirection).description}"/>
+                <setInstallerVariable name="report_failures_metadata" value="${report_failures_metadata} &quot;Disable HTTPS redirection: Removing custom redirections not supported&quot;">
+                    <ruleList>
+                        <apacheIsHttpsRedirectionEnabled/>
+                    </ruleList>
+                </setInstallerVariable>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="apacheEnableNonWwwToWwwRedirection">
+            <actionList>
+                <setInstallerVariable name="block" value="${parameter(additional_configuration).parameter(enable_nonwww_to_www_redirection).description}"/>
+                <if>
+                    <conditionRuleList>
+                        <apacheIsWwwToNonWwwRedirectionEnabled negate="1"/>
+                        <apacheIsNonWwwToWwwRedirectionEnabled negate="1"/>
+                    </conditionRuleList>
+                    <actionList>
+                        <logMessage text="Enabling www to non-www redirection"/>
+                        <apacheAddConfToVhost file="${web_server_conf_dir}/bitnami/bitnami.conf" block="${block}">
+                            <requiredConf>RewriteEngine On</requiredConf>
+                            <httpConf>  RewriteCond %{HTTP_HOST} !^www\. [NC]
+  RewriteCond %{HTTP_HOST} !^(localhost|127.0.0.1)
+  RewriteCond %{REQUEST_URI} !^/\.well-known
+  RewriteRule ^(.*)$ http://www.%{HTTP_HOST}%{REQUEST_URI} [R=permanent,L]</httpConf>
+                    <httpsConf>  RewriteCond %{HTTP_HOST} !^www\. [NC]
+  RewriteCond %{HTTP_HOST} !^(localhost|127.0.0.1)
+  RewriteCond %{REQUEST_URI} !^/\.well-known
+  RewriteRule ^(.*)$ https://www.%{HTTP_HOST}%{REQUEST_URI} [R=permanent,L]</httpsConf>
+                        </apacheAddConfToVhost>
+                    </actionList>
+                    <elseActionList>
+                        <logMessage text="Not enabling non-www to www redirection, it was already enabled"/>
+                    </elseActionList>
+                </if>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="apacheDisableNonWwwToWwwRedirection">
+            <actionList>
+                <setInstallerVariable name="block" value="${parameter(additional_configuration).parameter(enable_nonwww_to_www_redirection).description}"/>
+                <apacheRemoveConf file="${web_server_conf_dir}/bitnami/bitnami.conf" block="${block}"/>
+                <setInstallerVariable name="report_failures_metadata" value="${report_failures_metadata} &quot;Disable non-www to www redirection: Removing custom redirections not supported&quot;">
+                    <ruleList>
+                        <apacheIsNonWwwToWwwRedirectionEnabled/>
+                    </ruleList>
+                </setInstallerVariable>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="apacheEnableWwwToNonWwwRedirection">
+            <actionList>
+                <setInstallerVariable name="block" value="${parameter(additional_configuration).parameter(enable_www_to_nonwww_redirection).description}"/>
+                <if>
+                    <conditionRuleList>
+                        <apacheIsWwwToNonWwwRedirectionEnabled negate="1"/>
+                        <apacheIsNonWwwToWwwRedirectionEnabled negate="1"/>
+                    </conditionRuleList>
+                    <actionList>
+                        <logMessage text="Enabling www to non-www redirection"/>
+                        <apacheAddConfToVhost file="${web_server_conf_dir}/bitnami/bitnami.conf" block="${block}">
+                            <requiredConf>RewriteEngine On</requiredConf>
+                            <httpConf>  RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+  RewriteCond %{HTTP_HOST} !^(localhost|127.0.0.1)
+  RewriteCond %{REQUEST_URI} !^/\.well-known
+  RewriteRule ^(.*)$ http://%1$1 [R=permanent,L]</httpConf>
+                            <httpsConf>  RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+  RewriteCond %{HTTP_HOST} !^(localhost|127.0.0.1)
+  RewriteCond %{REQUEST_URI} !^/\.well-known
+  RewriteRule ^(.*)$ https://%1$1 [R=permanent,L]</httpsConf>
+                        </apacheAddConfToVhost>
+                    </actionList>
+                    <elseActionList>
+                        <logMessage text="Not enabling www to non-www redirection, it was already enabled"/>
+                    </elseActionList>
+                </if>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="apacheDisableWwwToNonWwwRedirection">
+            <actionList>
+                <setInstallerVariable name="block" value="${parameter(additional_configuration).parameter(enable_www_to_nonwww_redirection).description}"/>
+                <apacheRemoveConf file="${web_server_conf_dir}/bitnami/bitnami.conf" block="${block}"/>
+                <setInstallerVariable name="report_failures_metadata" value="${report_failures_metadata} &quot;Disable www to non-www redirection: Removing custom redirections not supported&quot;">
+                    <ruleList>
+                        <apacheIsWwwToNonWwwRedirectionEnabled/>
+                    </ruleList>
+                </setInstallerVariable>
+            </actionList>
+        </actionDefinition>
+    </functionDefinitionList>
+</component>
