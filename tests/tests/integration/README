@@ -1,0 +1,1 @@
+Requires a valid, but not funcional installdir, as it will perform checks but no action on it. Therefore --dry_run must be used.

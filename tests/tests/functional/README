@@ -1,0 +1,1 @@
+Tests that require a fully functional installdir and/or actions are performed on it (e.g. stopping server), which are also tested.

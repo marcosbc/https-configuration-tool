@@ -1,0 +1,19 @@
+# Bash strict mode
+set -euo pipefail
+export IFS=$'\n\t'
+
+# Common
+export OUTPUT_DIR=/tmp/output
+
+# Expect
+export EXPECT_VERSION=5.45.4
+export EXPECT_TARBALL_NAME=expect$EXPECT_VERSION
+
+# Itcl
+export ITCL_VERSION=4.1.1
+export ITCL_TARBALL_NAME=itcl$ITCL_VERSION
+
+# Tclkit
+export TCLKIT_VERSION=8.6.9
+export TCLLIB_VERSION=1_18
+export SDX_VERSION=20110317

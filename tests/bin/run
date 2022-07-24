@@ -1,0 +1,11 @@
+#!/usr/bin/env tclkit
+
+source env.tcl
+
+# Clean output to avoid having files from mixed runs
+puts "Cleaning output"
+file delete -force $output_dir
+file mkdir $output_dir
+
+# Run tests
+# TODO
